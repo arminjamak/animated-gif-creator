@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Mockup Screen Coordinate Picker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #4CAF50;
+        }
+        
+        .controls {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #aaa;
+        }
+        
+        input[type="file"],
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 14px;
+        }
+        
+        input[type="number"] {
+            width: 150px;
+        }
+        
+        .canvas-container {
+            position: relative;
+            display: inline-block;
+            margin: 20px auto;
+            background: #000;
+            border: 2px solid #444;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        canvas {
+            display: block;
+            cursor: crosshair;
+        }
+        
+        .selection-box {
+            position: absolute;
+            border: 2px solid #4CAF50;
+            background: rgba(76, 175, 80, 0.2);
+            pointer-events: none;
+        }
+        
+        .output {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .output h2 {
+            margin-bottom: 15px;
+            color: #4CAF50;
+        }
+        
+        .code-block {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #444;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin-bottom: 15px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-item {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #444;
+        }
+        
+        .stat-label {
+            color: #aaa;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        
+        .stat-value {
+            color: #4CAF50;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            margin-right: 10px;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        button:active {
+            transform: scale(0.98);
+        }
+        
+        .instructions {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .instructions h3 {
+            margin-bottom: 10px;
+            color: #4CAF50;
+        }
+        
+        .instructions ol {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+        
+        .rotation-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .rotation-control input[type="range"] {
+            flex: 1;
+        }
+        
+        .rotation-value {
+            min-width: 50px;
+            text-align: right;
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        
+        .thumbnail {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            border: 3px solid #444;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .thumbnail:hover {
+            border-color: #4CAF50;
+            transform: scale(1.05);
+        }
+        
+        .thumbnail.active {
+            border-color: #4CAF50;
+            box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+        }
+        
+        .thumbnail.configured {
+            border-color: #2196F3;
+        }
+        
+        .thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .thumbnail-status {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #4CAF50;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .thumbnail-name {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 5px;
+            font-size: 11px;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        #thumbnailGallery {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        
+        #thumbnailGallery h3 {
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Device Mockup Screen Coordinate Picker</h1>
+        
+        <div class="instructions">
+            <h3>Instructions:</h3>
+            <ol>
+                <li>Upload a device mockup image</li>
+                <li>Enter a name for this device (e.g., "Workspace Setup")</li>
+                <li>Click and drag on the image to select the screen area</li>
+                <li>Adjust the rotation if needed</li>
+                <li>Copy the generated coordinates from the output below</li>
+            </ol>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="imageUpload">Upload Device Mockup Images (multiple):</label>
+                <input type="file" id="imageUpload" accept="image/*" multiple>
+            </div>
+            
+            <div class="control-group" id="deviceNameGroup" style="display: none;">
+                <label for="deviceName">Device Name:</label>
+                <input type="text" id="deviceName" placeholder="e.g., Workspace Setup" value="">
+            </div>
+            
+            <div class="control-group">
+                <label for="rotation">Screen Rotation (degrees):</label>
+                <div class="rotation-control">
+                    <input type="range" id="rotation" min="-45" max="45" value="0" step="1">
+                    <span class="rotation-value"><span id="rotationValue">0</span>°</span>
+                </div>
+            </div>
+            
+            <button onclick="resetSelection()">Reset Selection</button>
+            <button onclick="saveCurrentCoordinates()">Save & Next</button>
+            <button onclick="downloadAllCoordinates()">Download All Coordinates</button>
+        </div>
+        
+        <div id="thumbnailGallery" style="display: none; margin-bottom: 20px;">
+            <h3 style="margin-bottom: 15px;">Select Image to Configure:</h3>
+            <div id="thumbnailContainer" style="display: flex; flex-wrap: wrap; gap: 15px;"></div>
+        </div>
+        
+        <div style="text-align: center;">
+            <div class="canvas-container" id="canvasContainer">
+                <canvas id="canvas"></canvas>
+                <div class="selection-box" id="selectionBox" style="display: none;"></div>
+            </div>
+        </div>
+        
+        <div class="output">
+            <h2>📊 Screen Coordinates</h2>
+            
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-label">X Position</div>
+                    <div class="stat-value" id="statX">0.00</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Y Position</div>
+                    <div class="stat-value" id="statY">0.00</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Width</div>
+                    <div class="stat-value" id="statWidth">0.00</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Height</div>
+                    <div class="stat-value" id="statHeight">0.00</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Rotation</div>
+                    <div class="stat-value" id="statRotation">0°</div>
+                </div>
+            </div>
+            
+            <h3>TypeScript Object:</h3>
+            <div class="code-block" id="tsOutput">Upload an image and select screen area...</div>
+            
+            <h3>JSON Format:</h3>
+            <div class="code-block" id="jsonOutput">Upload an image and select screen area...</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const selectionBox = document.getElementById('selectionBox');
+        const imageUpload = document.getElementById('imageUpload');
+        const deviceNameInput = document.getElementById('deviceName');
+        const rotationSlider = document.getElementById('rotation');
+        const rotationValue = document.getElementById('rotationValue');
+        const thumbnailGallery = document.getElementById('thumbnailGallery');
+        const thumbnailContainer = document.getElementById('thumbnailContainer');
+        const deviceNameGroup = document.getElementById('deviceNameGroup');
+        
+        let images = [];
+        let currentImageIndex = -1;
+        let isDrawing = false;
+        let startX = 0;
+        let startY = 0;
+        let currentX = 0;
+        let currentY = 0;
+        
+        imageUpload.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+            
+            images = [];
+            thumbnailContainer.innerHTML = '';
+            
+            let loadedCount = 0;
+            files.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        images.push({
+                            file: file,
+                            name: file.name,
+                            img: img,
+                            dataUrl: event.target.result,
+                            selection: null,
+                            rotation: 0,
+                            deviceName: file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, ' ')
+                        });
+                        
+                        loadedCount++;
+                        if (loadedCount === files.length) {
+                            createThumbnails();
+                            selectImage(0);
+                        }
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+        
+        function createThumbnails() {
+            thumbnailContainer.innerHTML = '';
+            thumbnailGallery.style.display = 'block';
+            
+            images.forEach((imageData, index) => {
+                const thumb = document.createElement('div');
+                thumb.className = 'thumbnail';
+                thumb.onclick = () => selectImage(index);
+                
+                const img = document.createElement('img');
+                img.src = imageData.dataUrl;
+                
+                const name = document.createElement('div');
+                name.className = 'thumbnail-name';
+                name.textContent = imageData.deviceName;
+                
+                thumb.appendChild(img);
+                thumb.appendChild(name);
+                
+                if (imageData.selection) {
+                    const status = document.createElement('div');
+                    status.className = 'thumbnail-status';
+                    status.textContent = '✓';
+                    thumb.appendChild(status);
+                    thumb.classList.add('configured');
+                }
+                
+                thumbnailContainer.appendChild(thumb);
+            });
+        }
+        
+        function selectImage(index) {
+            if (index < 0 || index >= images.length) return;
+            
+            currentImageIndex = index;
+            const imageData = images[index];
+            
+            // Update thumbnails
+            document.querySelectorAll('.thumbnail').forEach((thumb, i) => {
+                thumb.classList.toggle('active', i === index);
+            });
+            
+            // Set canvas size
+            const maxWidth = 1200;
+            const scale = imageData.img.width > maxWidth ? maxWidth / imageData.img.width : 1;
+            canvas.width = imageData.img.width * scale;
+            canvas.height = imageData.img.height * scale;
+            
+            // Load saved data
+            deviceNameInput.value = imageData.deviceName;
+            rotationSlider.value = imageData.rotation;
+            rotationValue.textContent = imageData.rotation;
+            
+            deviceNameGroup.style.display = 'block';
+            
+            drawImage();
+            updateOutput();
+        }
+        
+        canvas.addEventListener('mousedown', (e) => {
+            if (currentImageIndex < 0) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            startX = e.clientX - rect.left;
+            startY = e.clientY - rect.top;
+            isDrawing = true;
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing || currentImageIndex < 0) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            currentX = e.clientX - rect.left;
+            currentY = e.clientY - rect.top;
+            
+            updateSelection();
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            if (isDrawing) {
+                isDrawing = false;
+                finalizeSelection();
+            }
+        });
+        
+        canvas.addEventListener('mouseleave', () => {
+            if (isDrawing) {
+                isDrawing = false;
+                finalizeSelection();
+            }
+        });
+        
+        rotationSlider.addEventListener('input', (e) => {
+            rotationValue.textContent = e.target.value;
+            updateOutput();
+        });
+        
+        deviceNameInput.addEventListener('input', () => {
+            updateOutput();
+        });
+        
+        function drawImage() {
+            if (!img) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            
+            if (selection) {
+                ctx.strokeStyle = '#4CAF50';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(selection.x, selection.y, selection.width, selection.height);
+                
+                // Draw semi-transparent overlay
+                ctx.fillStyle = 'rgba(76, 175, 80, 0.2)';
+                ctx.fillRect(selection.x, selection.y, selection.width, selection.height);
+            }
+        }
+        
+        function updateSelection() {
+            const x = Math.min(startX, currentX);
+            const y = Math.min(startY, currentY);
+            const width = Math.abs(currentX - startX);
+            const height = Math.abs(currentY - startY);
+            
+            selectionBox.style.display = 'block';
+            selectionBox.style.left = x + 'px';
+            selectionBox.style.top = y + 'px';
+            selectionBox.style.width = width + 'px';
+            selectionBox.style.height = height + 'px';
+        }
+        
+        function finalizeSelection() {
+            const x = Math.min(startX, currentX);
+            const y = Math.min(startY, currentY);
+            const width = Math.abs(currentX - startX);
+            const height = Math.abs(currentY - startY);
+            
+            if (width > 10 && height > 10) {
+                selection = { x, y, width, height };
+                drawImage();
+                updateOutput();
+            }
+            
+            selectionBox.style.display = 'none';
+        }
+        
+        function resetSelection() {
+            selection = null;
+            selectionBox.style.display = 'none';
+            drawImage();
+            updateOutput();
+        }
+        
+        function updateOutput() {
+            if (!selection || !img) {
+                document.getElementById('tsOutput').textContent = 'Upload an image and select screen area...';
+                document.getElementById('jsonOutput').textContent = 'Upload an image and select screen area...';
+                return;
+            }
+            
+            // Calculate normalized coordinates (0-1 range)
+            const normalizedX = (selection.x / canvas.width).toFixed(2);
+            const normalizedY = (selection.y / canvas.height).toFixed(2);
+            const normalizedWidth = (selection.width / canvas.width).toFixed(2);
+            const normalizedHeight = (selection.height / canvas.height).toFixed(2);
+            const rotation = parseInt(rotationSlider.value);
+            const deviceName = deviceNameInput.value || 'Device';
+            
+            // Update stats
+            document.getElementById('statX').textContent = normalizedX;
+            document.getElementById('statY').textContent = normalizedY;
+            document.getElementById('statWidth').textContent = normalizedWidth;
+            document.getElementById('statHeight').textContent = normalizedHeight;
+            document.getElementById('statRotation').textContent = rotation + '°';
+            
+            // Generate TypeScript output
+            const tsOutput = `{
+  id: "device-1",
+  image: "/assets/your-image.png",
+  name: "${deviceName}",
+  screenArea: { x: ${normalizedX}, y: ${normalizedY}, width: ${normalizedWidth}, height: ${normalizedHeight}, rotation: ${rotation} }
+}`;
+            
+            // Generate JSON output
+            const jsonOutput = `{
+  "id": "device-1",
+  "image": "/assets/your-image.png",
+  "name": "${deviceName}",
+  "screenArea": {
+    "x": ${normalizedX},
+    "y": ${normalizedY},
+    "width": ${normalizedWidth},
+    "height": ${normalizedHeight},
+    "rotation": ${rotation}
+  }
+}`;
+            
+            document.getElementById('tsOutput').textContent = tsOutput;
+            document.getElementById('jsonOutput').textContent = jsonOutput;
+        }
+        
+        function copyToClipboard() {
+            const tsOutput = document.getElementById('tsOutput').textContent;
+            
+            if (tsOutput === 'Upload an image and select screen area...') {
+                alert('Please upload an image and select a screen area first!');
+                return;
+            }
+            
+            navigator.clipboard.writeText(tsOutput).then(() => {
+                alert('✅ Coordinates copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('❌ Failed to copy to clipboard. Please copy manually.');
+            });
+        }
+    </script>
+</body>
+</html>

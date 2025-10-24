@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integrated 4-Point Screen Coordinate Picker</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a1a; color: #fff; padding: 20px; }
+        .container { max-width: 1600px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 20px; color: #4CAF50; }
+        .status { text-align: center; padding: 15px; background: #2a2a2a; border-radius: 8px; margin-bottom: 20px; }
+        .status.loading { color: #FFC107; }
+        .status.ready { color: #4CAF50; }
+        .status.error { color: #f44336; }
+        .main-layout { display: grid; grid-template-columns: 250px 1fr; gap: 20px; }
+        .sidebar { background: #2a2a2a; padding: 20px; border-radius: 8px; height: fit-content; }
+        .sidebar h3 { color: #4CAF50; margin-bottom: 15px; font-size: 16px; }
+        .device-list { display: flex; flex-direction: column; gap: 10px; max-height: 70vh; overflow-y: auto; }
+        .device-item { padding: 12px; background: #1a1a1a; border: 2px solid #444; border-radius: 6px; cursor: pointer; transition: all 0.3s; }
+        .device-item:hover { border-color: #4CAF50; transform: translateX(5px); }
+        .device-item.active { border-color: #4CAF50; background: #2a4a2a; }
+        .device-item.configured { border-color: #2196F3; }
+        .device-item .name { font-weight: bold; font-size: 13px; margin-bottom: 5px; }
+        .device-item .status { font-size: 11px; color: #888; }
+        .device-item.configured .status { color: #2196F3; }
+        .canvas-area { background: #2a2a2a; padding: 20px; border-radius: 8px; }
+        .canvas-container { position: relative; display: inline-block; background: #000; border: 2px solid #444; border-radius: 8px; overflow: hidden; margin: 0 auto; display: block; }
+        canvas { display: block; cursor: crosshair; }
+        .point { position: absolute; width: 16px; height: 16px; background: #4CAF50; border: 3px solid white; border-radius: 50%; transform: translate(-50%, -50%); cursor: move; box-shadow: 0 0 10px rgba(76, 175, 80, 0.8); z-index: 10; }
+        .point:hover { background: #45a049; transform: translate(-50%, -50%) scale(1.2); }
+        .point-label { position: absolute; background: rgba(0, 0, 0, 0.8); color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold; transform: translate(-50%, -150%); pointer-events: none; }
+        .polygon-overlay { position: absolute; pointer-events: none; top: 0; left: 0; }
+        .controls { margin-top: 20px; text-align: center; }
+        .controls button { background: #4CAF50; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; margin: 0 10px; transition: all 0.3s; }
+        .controls button:hover { background: #45a049; transform: translateY(-2px); }
+        .controls button:disabled { background: #666; cursor: not-allowed; transform: none; }
+        .instructions { background: #2a2a2a; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #4CAF50; }
+        .instructions h3 { color: #4CAF50; margin-bottom: 10px; }
+        .instructions ol { margin-left: 20px; line-height: 1.8; }
+        .progress-bar { background: #1a1a1a; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 10px; }
+        .progress-fill { background: linear-gradient(90deg, #4CAF50, #45a049); height: 100%; transition: width 0.3s; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 4-Point Screen Coordinate Picker</h1>
+        
+        <div class="status loading" id="status">Loading devices from frontend...</div>
+        
+        <div class="instructions">
+            <h3>Instructions:</h3>
+            <ol>
+                <li>Select a device from the sidebar</li>
+                <li>Click on the image to place 4 corner points: <strong>Top-Left → Top-Right → Bottom-Right → Bottom-Left</strong></li>
+                <li>Drag points to adjust position</li>
+                <li>Click "Save Coordinates" to write to App.tsx</li>
+                <li>Repeat for all devices</li>
+            </ol>
+        </div>
+        
+        <div class="main-layout">
+            <div class="sidebar">
+                <h3>Device Mockups</h3>
+                <div id="progressInfo" style="margin-bottom: 15px; font-size: 13px; color: #888;">0/0 configured</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                </div>
+                <div class="device-list" id="deviceList"></div>
+            </div>
+            
+            <div class="canvas-area">
+                <div class="canvas-container" id="canvasContainer">
+                    <canvas id="canvas"></canvas>
+                    <svg class="polygon-overlay" id="polygonOverlay"></svg>
+                </div>
+                
+                <div class="controls">
+                    <button onclick="resetPoints()" id="resetBtn" disabled>Reset Points</button>
+                    <button onclick="saveCoordinates()" id="saveBtn" disabled>Save Coordinates</button>
+                    <button onclick="nextDevice()" id="nextBtn" disabled>Save & Next</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3001/api';
+        let devices = [];
+        let currentDevice = null;
+        let points = [];
+        let draggedPoint = null;
+        let devicePoints = {};
+        
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const canvasContainer = document.getElementById('canvasContainer');
+        const polygonOverlay = document.getElementById('polygonOverlay');
+        const deviceList = document.getElementById('deviceList');
+        const status = document.getElementById('status');
+        
+        // Load devices from backend
+        async function loadDevices() {
+            try {
+                const response = await fetch(`${API_URL}/devices`);
+                const data = await response.json();
+                devices = data.devices;
+                
+                renderDeviceList();
+                updateProgress();
+                
+                status.className = 'status ready';
+                status.textContent = `✅ Loaded ${devices.length} devices from frontend`;
+                
+                if (devices.length > 0) {
+                    selectDevice(0);
+                }
+            } catch (error) {
+                status.className = 'status error';
+                status.textContent = `❌ Error: ${error.message}. Make sure the server is running!`;
+                console.error('Error loading devices:', error);
+            }
+        }
+        
+        function renderDeviceList() {
+            deviceList.innerHTML = '';
+            devices.forEach((device, index) => {
+                const item = document.createElement('div');
+                item.className = 'device-item';
+                if (hasValidCoordinates(device)) {
+                    item.classList.add('configured');
+                }
+                item.onclick = () => selectDevice(index);
+                
+                const name = document.createElement('div');
+                name.className = 'name';
+                name.textContent = device.name;
+                
+                const statusDiv = document.createElement('div');
+                statusDiv.className = 'status';
+                statusDiv.textContent = hasValidCoordinates(device) ? '✓ Configured' : '○ Not configured';
+                
+                item.appendChild(name);
+                item.appendChild(statusDiv);
+                deviceList.appendChild(item);
+            });
+        }
+        
+        function hasValidCoordinates(device) {
+            return device.screenArea.width > 0 && device.screenArea.height > 0;
+        }
+        
+        function selectDevice(index) {
+            if (index < 0 || index >= devices.length) return;
+            
+            // Get fresh reference from devices array
+            currentDevice = devices[index];
+            currentImageIndex = index;
+            
+            console.log('Selecting device:', currentDevice.name, 'with screenArea:', currentDevice.screenArea);
+            
+            // Update sidebar
+            document.querySelectorAll('.device-item').forEach((item, i) => {
+                item.classList.toggle('active', i === index);
+            });
+            
+            // Load image
+            loadDeviceImage();
+            
+            // Enable buttons
+            document.getElementById('resetBtn').disabled = false;
+            document.getElementById('saveBtn').disabled = false;
+            document.getElementById('nextBtn').disabled = false;
+        }
+        
+        function loadDeviceImage() {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                // Scale to fit
+                const maxWidth = 1200;
+                const scale = img.width > maxWidth ? maxWidth / img.width : 1;
+                canvas.width = img.width * scale;
+                canvas.height = img.height * scale;
+                
+                // Update SVG overlay size
+                polygonOverlay.setAttribute('width', canvas.width);
+                polygonOverlay.setAttribute('height', canvas.height);
+                
+                // Draw image
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                
+                // Load existing points if configured
+                loadExistingPoints();
+            };
+            img.onerror = () => {
+                console.error('Failed to load image:', currentDevice.image);
+                // Try without leading slash
+                const altSrc = currentDevice.image.startsWith('/') ? currentDevice.image.substring(1) : currentDevice.image;
+                img.src = altSrc;
+            };
+            img.src = currentDevice.image;
+        }
+        
+        function loadExistingPoints() {
+            points = [];
+            canvasContainer.querySelectorAll('.point').forEach(p => p.remove());
+            
+            console.log('Loading points for:', currentDevice.name, currentDevice.screenArea);
+            
+            // Check if we have exact saved points for this device
+            if (devicePoints[currentDevice.id] && devicePoints[currentDevice.id].length === 4) {
+                // Use the exact saved point positions
+                points = devicePoints[currentDevice.id].map(p => ({ x: p.x, y: p.y }));
+                console.log('Loaded exact saved points:', points);
+                renderPoints();
+                
+                status.className = 'status ready';
+                status.textContent = `✅ Loaded saved coordinates for ${currentDevice.name}`;
+            } else if (hasValidCoordinates(currentDevice)) {
+                // Fall back to calculating from bounding box
+                const { x, y, width, height } = currentDevice.screenArea;
+                
+                console.log('Calculating points from bounding box:', { x, y, width, height });
+                
+                // Convert normalized coordinates to pixel coordinates
+                const topLeft = { x: x * canvas.width, y: y * canvas.height };
+                const topRight = { x: (x + width) * canvas.width, y: y * canvas.height };
+                const bottomRight = { x: (x + width) * canvas.width, y: (y + height) * canvas.height };
+                const bottomLeft = { x: x * canvas.width, y: (y + height) * canvas.height };
+                
+                points = [topLeft, topRight, bottomRight, bottomLeft];
+                console.log('Calculated points:', points);
+                renderPoints();
+                
+                status.className = 'status ready';
+                status.textContent = `✅ Loaded saved coordinates for ${currentDevice.name}`;
+            } else {
+                status.className = 'status';
+                status.textContent = 'Click on the image to place 4 corner points...';
+            }
+        }
+        
+        canvas.addEventListener('click', (e) => {
+            if (!currentDevice || points.length >= 4) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            points.push({ x, y });
+            renderPoints();
+            
+            if (points.length === 4) {
+                status.className = 'status ready';
+                status.textContent = '✅ All 4 points placed! Click "Save Coordinates" to save.';
+            }
+        });
+        
+        function renderPoints() {
+            // Remove existing points
+            canvasContainer.querySelectorAll('.point').forEach(p => p.remove());
+            
+            const labels = ['TL', 'TR', 'BR', 'BL'];
+            
+            points.forEach((point, index) => {
+                const pointEl = document.createElement('div');
+                pointEl.className = 'point';
+                pointEl.style.left = point.x + 'px';
+                pointEl.style.top = point.y + 'px';
+                
+                const label = document.createElement('div');
+                label.className = 'point-label';
+                label.textContent = labels[index];
+                pointEl.appendChild(label);
+                
+                pointEl.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    draggedPoint = index;
+                });
+                
+                canvasContainer.appendChild(pointEl);
+            });
+            
+            drawPolygon();
+        }
+        
+        document.addEventListener('mousemove', (e) => {
+            if (draggedPoint === null) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.max(0, Math.min(canvas.width, e.clientX - rect.left));
+            const y = Math.max(0, Math.min(canvas.height, e.clientY - rect.top));
+            
+            points[draggedPoint] = { x, y };
+            renderPoints();
+        });
+        
+        document.addEventListener('mouseup', () => {
+            draggedPoint = null;
+        });
+        
+        function drawPolygon() {
+            if (points.length < 3) {
+                polygonOverlay.innerHTML = '';
+                return;
+            }
+            
+            const pathData = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z';
+            
+            polygonOverlay.innerHTML = `
+                <path d="${pathData}" fill="rgba(76, 175, 80, 0.2)" stroke="#4CAF50" stroke-width="2"/>
+            `;
+        }
+        
+        function resetPoints() {
+            points = [];
+            renderPoints();
+            status.className = 'status';
+            status.textContent = 'Click on the image to place 4 corner points...';
+        }
+        
+        async function saveCoordinates() {
+            if (points.length !== 4) {
+                alert('⚠️ Please place all 4 corner points first!');
+                return;
+            }
+            
+            // Normalize the 4 corner points to 0-1 range
+            const normalizedPoints = points.map(p => ({
+                x: parseFloat((p.x / canvas.width).toFixed(4)),
+                y: parseFloat((p.y / canvas.height).toFixed(4))
+            }));
+            
+            // Also calculate bounding box for backward compatibility
+            const xs = points.map(p => p.x);
+            const ys = points.map(p => p.y);
+            
+            const minX = Math.min(...xs);
+            const minY = Math.min(...ys);
+            const maxX = Math.max(...xs);
+            const maxY = Math.max(...ys);
+            
+            // Create screenArea with both points and bounding box
+            const screenArea = {
+                points: normalizedPoints,
+                x: parseFloat((minX / canvas.width).toFixed(2)),
+                y: parseFloat((minY / canvas.height).toFixed(2)),
+                width: parseFloat(((maxX - minX) / canvas.width).toFixed(2)),
+                height: parseFloat(((maxY - minY) / canvas.height).toFixed(2)),
+                rotation: 0
+            };
+            
+            try {
+                status.className = 'status loading';
+                status.textContent = '💾 Saving coordinates...';
+                
+                const response = await fetch(`${API_URL}/devices/${currentDevice.id}/coordinates`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ screenArea })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    status.className = 'status ready';
+                    status.textContent = `✅ Saved coordinates for ${currentDevice.name}!`;
+                    
+                    // Update local device data in the array
+                    const currentIndex = devices.indexOf(currentDevice);
+                    devices[currentIndex].screenArea = { ...screenArea };
+                    currentDevice.screenArea = { ...screenArea };
+                    
+                    // Store the exact point positions for this device
+                    devicePoints[currentDevice.id] = points.map(p => ({ x: p.x, y: p.y }));
+                    
+                    console.log('Updated device in array:', devices[currentIndex]);
+                    console.log('Saved exact points for', currentDevice.id, ':', devicePoints[currentDevice.id]);
+                    
+                    renderDeviceList();
+                    updateProgress();
+                    
+                    // Re-select to show active state
+                    document.querySelectorAll('.device-item')[currentIndex].classList.add('active');
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                status.className = 'status error';
+                status.textContent = `❌ Error saving: ${error.message}`;
+                console.error('Error saving coordinates:', error);
+            }
+        }
+        
+        function nextDevice() {
+            if (points.length === 4) {
+                saveCoordinates().then(() => {
+                    const currentIndex = devices.indexOf(currentDevice);
+                    const nextIndex = currentIndex + 1;
+                    
+                    if (nextIndex < devices.length) {
+                        selectDevice(nextIndex);
+                    } else {
+                        status.className = 'status ready';
+                        status.textContent = '🎉 All devices configured!';
+                    }
+                });
+            } else {
+                const currentIndex = devices.indexOf(currentDevice);
+                const nextIndex = currentIndex + 1;
+                
+                if (nextIndex < devices.length) {
+                    selectDevice(nextIndex);
+                }
+            }
+        }
+        
+        function updateProgress() {
+            const configured = devices.filter(hasValidCoordinates).length;
+            const total = devices.length;
+            const percentage = total > 0 ? (configured / total) * 100 : 0;
+            
+            document.getElementById('progressInfo').textContent = `${configured}/${total} configured`;
+            document.getElementById('progressFill').style.width = percentage + '%';
+        }
+        
+        // Load devices on page load
+        loadDevices();
+    </script>
+</body>
+</html>
