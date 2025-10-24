@@ -2,6 +2,7 @@
       "name": "Animated GIF Creator",
       "version": "0.1.0",
       "private": true,
+      "type": "module",
       "dependencies": {
             "@ffmpeg/ffmpeg": "^0.12.15",
             "@ffmpeg/util": "^0.12.2",
