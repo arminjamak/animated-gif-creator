@@ -50,6 +50,7 @@
             "react-resizable-panels": "^2.1.7",
             "recharts": "^2.15.2",
             "sonner": "^2.0.3",
+            "stripe": "^17.7.0",
             "tailwind-merge": "*",
             "vaul": "^1.1.2"
       },
@@ -62,6 +63,7 @@
       "scripts": {
             "dev": "vite",
             "build": "vite build",
-            "coordinate-picker": "node coordinate-picker-server.js"
+            "coordinate-picker": "node coordinate-picker-server.js",
+            "payment-server": "node payment-server.js"
       }
 }

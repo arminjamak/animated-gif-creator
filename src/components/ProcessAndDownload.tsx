@@ -3,6 +3,7 @@ import { DeviceMockup } from "../App";
 import { Button } from "./ui/button";
 import { Download } from "lucide-react";
 import { processMedia } from "../utils/mediaProcessor";
+import { useCredit, hasCredits } from "../utils/credits";
 
 type ProcessAndDownloadProps = {
   device: DeviceMockup;
@@ -35,6 +36,20 @@ export function ProcessAndDownload({
   }, [device, uploadedFile]);
 
   const processContent = async () => {
+    // Check if user has credits
+    if (!hasCredits()) {
+      setError("No generations left. Please upgrade to continue.");
+      setProcessing(false);
+      return;
+    }
+
+    // Use a credit
+    if (!useCredit()) {
+      setError("Failed to use credit. Please try again.");
+      setProcessing(false);
+      return;
+    }
+
     setProcessing(true);
     setProgress(0);
     setStatus("Initializing...");

@@ -1,12 +1,44 @@
-import { X } from "lucide-react";
+import { X, Loader2 } from "lucide-react";
+import { useState } from "react";
 
 type UpgradeModalProps = {
   isOpen: boolean;
   onClose: () => void;
 };
 
+const PAYMENT_API = import.meta.env.VITE_PAYMENT_API_URL || 'http://localhost:3002';
+
 export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
+  const [loading, setLoading] = useState<number | null>(null);
+
   if (!isOpen) return null;
+
+  const handlePurchase = async (credits: number) => {
+    setLoading(credits);
+    
+    try {
+      const response = await fetch(`${PAYMENT_API}/api/create-checkout-session`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ credits }),
+      });
+
+      const data = await response.json();
+
+      if (data.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL received');
+      }
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+      alert('Failed to start checkout. Please try again.');
+      setLoading(null);
+    }
+  };
 
   return (
     <>
@@ -26,6 +58,7 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
           <button 
             onClick={onClose}
             className="size-8 flex items-center justify-center hover:opacity-80 transition-opacity"
+            disabled={loading !== null}
           >
             <X className="size-8 text-white" strokeWidth={2} />
           </button>
@@ -33,31 +66,55 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
 
         {/* Options */}
         <div className="flex flex-col gap-4">
-          <button className="bg-[rgba(255,255,255,0.1)] rounded-[16px] px-6 py-4 flex items-center justify-between hover:bg-[rgba(255,255,255,0.15)] transition-colors">
+          <button 
+            onClick={() => handlePurchase(10)}
+            disabled={loading !== null}
+            className="bg-[rgba(255,255,255,0.1)] rounded-[16px] px-6 py-4 flex items-center justify-between hover:bg-[rgba(255,255,255,0.15)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             <p className="font-['Inter:Regular',_sans-serif] font-normal leading-[32px] text-[20px] text-white font-[Inter]">
               10 generations
             </p>
-            <p className="font-['Inter:Medium',_sans-serif] font-medium leading-[32px] text-[20px] text-white font-[Inter]">
-              5$
-            </p>
+            {loading === 10 ? (
+              <Loader2 className="size-6 text-white animate-spin" />
+            ) : (
+              <p className="font-['Inter:Medium',_sans-serif] font-medium leading-[32px] text-[20px] text-white font-[Inter]">
+                $5
+              </p>
+            )}
           </button>
 
-          <button className="bg-[rgba(255,255,255,0.1)] rounded-[16px] px-6 py-4 flex items-center justify-between hover:bg-[rgba(255,255,255,0.15)] transition-colors">
+          <button 
+            onClick={() => handlePurchase(20)}
+            disabled={loading !== null}
+            className="bg-[rgba(255,255,255,0.1)] rounded-[16px] px-6 py-4 flex items-center justify-between hover:bg-[rgba(255,255,255,0.15)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             <p className="font-['Inter:Regular',_sans-serif] font-normal leading-[32px] text-[20px] text-white font-[Inter]">
               20 generations
             </p>
-            <p className="font-['Inter:Medium',_sans-serif] font-medium leading-[32px] text-[20px] text-white font-[Inter]">
-              8$
-            </p>
+            {loading === 20 ? (
+              <Loader2 className="size-6 text-white animate-spin" />
+            ) : (
+              <p className="font-['Inter:Medium',_sans-serif] font-medium leading-[32px] text-[20px] text-white font-[Inter]">
+                $8
+              </p>
+            )}
           </button>
 
-          <button className="bg-[rgba(255,255,255,0.1)] rounded-[16px] px-6 py-4 flex items-center justify-between hover:bg-[rgba(255,255,255,0.15)] transition-colors text-[15px]">
+          <button 
+            onClick={() => handlePurchase(30)}
+            disabled={loading !== null}
+            className="bg-[rgba(255,255,255,0.1)] rounded-[16px] px-6 py-4 flex items-center justify-between hover:bg-[rgba(255,255,255,0.15)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             <p className="font-['Inter:Regular',_sans-serif] font-normal leading-[32px] text-[20px] text-white font-[Inter]">
               30 generations
             </p>
-            <p className="font-['Inter:Medium',_sans-serif] font-medium leading-[32px] text-[20px] text-white font-[Inter]">
-              11$
-            </p>
+            {loading === 30 ? (
+              <Loader2 className="size-6 text-white animate-spin" />
+            ) : (
+              <p className="font-['Inter:Medium',_sans-serif] font-medium leading-[32px] text-[20px] text-white font-[Inter]">
+                $11
+              </p>
+            )}
           </button>
         </div>
       </div>

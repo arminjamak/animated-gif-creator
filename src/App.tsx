@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { ChevronRight } from "lucide-react";
 import { DeviceSelection } from "./components/DeviceSelection";
 import { FileUpload } from "./components/FileUpload";
 import { ProcessAndDownload } from "./components/ProcessAndDownload";
 import { UpgradeModal } from "./components/UpgradeModal";
+import { initializeCredits, getCreditsText, addPaidCredits } from "./utils/credits";
 import imgGeminiGeneratedImageB41Cfzb41Cfzb41C1 from "./assets/e4e504c58fbcb6230c59beef695b16fbe8fe88b3.png";
 import imgGeminiGeneratedImageTz1Exytz1Exytz1E1 from "./assets/67f24e8419bff5e3effca5aeac1f68520faf2d60.png";
 import imgGeminiGeneratedImageAvok6Iavok6Iavok1 from "./assets/6a20dad0a2060f128b266554ad538181742a2399.png";
@@ -69,6 +71,34 @@ export default function App() {
     croppedArea: { x: number; y: number; width: number; height: number } | null;
   } | null>(null);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [creditsText, setCreditsText] = useState("");
+
+  // Initialize credits and check for successful payment
+  useEffect(() => {
+    initializeCredits();
+    updateCreditsText();
+
+    // Check for successful payment in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('success');
+    const credits = urlParams.get('credits');
+
+    if (success === 'true' && credits) {
+      const creditAmount = parseInt(credits);
+      addPaidCredits(creditAmount);
+      updateCreditsText();
+      
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Show success message
+      alert(`Successfully added ${creditAmount} generation credits!`);
+    }
+  }, []);
+
+  const updateCreditsText = () => {
+    setCreditsText(getCreditsText());
+  };
 
   const handleDeviceSelect = (device: DeviceMockup) => {
     setSelectedDevice(device);
@@ -107,6 +137,7 @@ export default function App() {
 
   const handleUpgradeModalClose = () => {
     setIsUpgradeModalOpen(false);
+    updateCreditsText();
   };
 
   return (
@@ -147,7 +178,7 @@ export default function App() {
 
         {/* Generation Counter */}
         <p className="absolute font-['Inter:Regular',_sans-serif] font-normal leading-[normal] not-italic text-[16px] text-nowrap text-white whitespace-pre opacity-40 right-[178px] top-[31px]">
-          3 free generations left
+          {creditsText}
         </p>
 
         {/* Upgrade Button */}
