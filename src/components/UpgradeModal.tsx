@@ -6,7 +6,7 @@ type UpgradeModalProps = {
   onClose: () => void;
 };
 
-const PAYMENT_API = import.meta.env.VITE_PAYMENT_API_URL || 'http://localhost:3002';
+const PAYMENT_API = import.meta.env.VITE_PAYMENT_API_URL || '';
 
 export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
   const [loading, setLoading] = useState<number | null>(null);
@@ -14,6 +14,12 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
   if (!isOpen) return null;
 
   const handlePurchase = async (credits: number) => {
+    // Check if payment API is configured
+    if (!PAYMENT_API) {
+      alert('Payment system is not configured yet. Please contact support or check back later.');
+      return;
+    }
+
     setLoading(credits);
     
     try {
