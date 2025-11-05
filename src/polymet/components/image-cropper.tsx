@@ -24,6 +24,7 @@ export function ImageCropper({
   aspectRatio = 16 / 9,
   onCropComplete,
 }: ImageCropperProps) {
+  // Default to full image (entire crop area)
   const [crop, setCrop] = useState<CropArea>({
     x: 0,
     y: 0,
@@ -40,25 +41,9 @@ export function ImageCropper({
   const isVideo = file.type.startsWith("video/");
 
   useEffect(() => {
-    // Initialize crop area based on aspect ratio
-    if (aspectRatio) {
-      const containerWidth = 100;
-      const containerHeight = 100;
-
-      let cropWidth = containerWidth;
-      let cropHeight = cropWidth / aspectRatio;
-
-      if (cropHeight > containerHeight) {
-        cropHeight = containerHeight;
-        cropWidth = cropHeight * aspectRatio;
-      }
-
-      const x = (containerWidth - cropWidth) / 2;
-      const y = (containerHeight - cropHeight) / 2;
-
-      setCrop({ x, y, width: cropWidth, height: cropHeight });
-    }
-  }, [aspectRatio]);
+    // Default to full image crop (don't constrain by aspect ratio initially)
+    setCrop({ x: 0, y: 0, width: 100, height: 100 });
+  }, []);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -91,11 +76,11 @@ export function ImageCropper({
               // Horizontal movement affects left edge, vertical affects top edge
               const newLeftX = Math.max(
                 0,
-                Math.min(x, prev.x + prev.width - 10)
+                Math.min(x, prev.x + prev.width - 1)
               );
               const newTopY = Math.max(
                 0,
-                Math.min(y, prev.y + prev.height - 10)
+                Math.min(y, prev.y + prev.height - 1)
               );
               newCrop.width = prev.width + (prev.x - newLeftX);
               newCrop.height = prev.height + (prev.y - newTopY);
@@ -107,9 +92,9 @@ export function ImageCropper({
               // Horizontal movement affects right edge, vertical affects top edge
               const newTopY2 = Math.max(
                 0,
-                Math.min(y, prev.y + prev.height - 10)
+                Math.min(y, prev.y + prev.height - 1)
               );
-              newCrop.width = Math.max(10, Math.min(x - prev.x, 100 - prev.x));
+              newCrop.width = Math.max(1, Math.min(x - prev.x, 100 - prev.x));
               newCrop.height = prev.height + (prev.y - newTopY2);
               newCrop.y = newTopY2;
               break;
@@ -118,17 +103,17 @@ export function ImageCropper({
               // Horizontal movement affects left edge, vertical affects bottom edge
               const newLeftX2 = Math.max(
                 0,
-                Math.min(x, prev.x + prev.width - 10)
+                Math.min(x, prev.x + prev.width - 1)
               );
               newCrop.width = prev.width + (prev.x - newLeftX2);
-              newCrop.height = Math.max(10, Math.min(y - prev.y, 100 - prev.y));
+              newCrop.height = Math.max(1, Math.min(y - prev.y, 100 - prev.y));
               newCrop.x = newLeftX2;
               break;
 
             case "bottom-right":
               // Horizontal movement affects right edge, vertical affects bottom edge
-              newCrop.width = Math.max(10, Math.min(x - prev.x, 100 - prev.x));
-              newCrop.height = Math.max(10, Math.min(y - prev.y, 100 - prev.y));
+              newCrop.width = Math.max(1, Math.min(x - prev.x, 100 - prev.x));
+              newCrop.height = Math.max(1, Math.min(y - prev.y, 100 - prev.y));
               break;
           }
 
@@ -159,29 +144,19 @@ export function ImageCropper({
   );
 
   const handleFitToScreen = useCallback(() => {
-    if (aspectRatio) {
-      const containerWidth = 100;
-      const containerHeight = 100;
-
-      let cropWidth = containerWidth;
-      let cropHeight = cropWidth / aspectRatio;
-
-      if (cropHeight > containerHeight) {
-        cropHeight = containerHeight;
-        cropWidth = cropHeight * aspectRatio;
-      }
-
-      const x = (containerWidth - cropWidth) / 2;
-      const y = (containerHeight - cropHeight) / 2;
-
-      setCrop({ x, y, width: cropWidth, height: cropHeight });
-    } else {
-      setCrop({ x: 0, y: 0, width: 100, height: 100 });
-    }
-  }, [aspectRatio]);
+    // Reset to full image crop
+    setCrop({ x: 0, y: 0, width: 100, height: 100 });
+  }, []);
 
   const handleApplyCrop = useCallback(() => {
-    onCropComplete(crop);
+    // Normalize crop values from percentage (0-100) to decimal (0-1)
+    const normalizedCrop = {
+      x: crop.x / 100,
+      y: crop.y / 100,
+      width: crop.width / 100,
+      height: crop.height / 100,
+    };
+    onCropComplete(normalizedCrop);
   }, [crop, onCropComplete]);
 
   return (
@@ -198,78 +173,8 @@ export function ImageCropper({
 
       <Card>
         <CardContent className="p-6">
-          <div
-            ref={containerRef}
-            className="relative w-full aspect-video bg-muted rounded-lg overflow-hidden cursor-move"
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-          >
-            {/* Image/Video Preview */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              {isVideo ? (
-                <video
-                  ref={videoRef}
-                  src={preview}
-                  className="max-w-full max-h-full"
-                  controls={false}
-                  muted
-                  loop
-                  autoPlay
-                />
-              ) : (
-                <img
-                  ref={imageRef}
-                  src={preview}
-                  alt="Crop preview"
-                  className="max-w-full max-h-full object-contain"
-                />
-              )}
-            </div>
-
-            {/* Crop Overlay */}
-            <div className="absolute inset-0 pointer-events-none">
-              {/* Dark overlay */}
-              <div className="absolute inset-0 bg-black/50" />
-
-              {/* Crop area */}
-              <div
-                className="absolute border-2 border-primary bg-transparent pointer-events-auto cursor-move"
-                style={{
-                  left: `${crop.x}%`,
-                  top: `${crop.y}%`,
-                  width: `${crop.width}%`,
-                  height: `${crop.height}%`,
-                  boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.5)",
-                }}
-                onMouseDown={handleMouseDown}
-              >
-                {/* Corner handles */}
-                <div
-                  className="absolute -top-1 -left-1 w-3 h-3 bg-primary rounded-full cursor-nwse-resize"
-                  onMouseDown={(e) => handleHandleMouseDown(e, "top-left")}
-                />
-
-                <div
-                  className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full cursor-nesw-resize"
-                  onMouseDown={(e) => handleHandleMouseDown(e, "top-right")}
-                />
-
-                <div
-                  className="absolute -bottom-1 -left-1 w-3 h-3 bg-primary rounded-full cursor-nesw-resize"
-                  onMouseDown={(e) => handleHandleMouseDown(e, "bottom-left")}
-                />
-
-                <div
-                  className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary rounded-full cursor-nwse-resize"
-                  onMouseDown={(e) => handleHandleMouseDown(e, "bottom-right")}
-                />
-              </div>
-            </div>
-          </div>
-
           {/* Controls */}
-          <div className="mt-6">
+          <div className="mb-4">
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -284,6 +189,107 @@ export function ImageCropper({
                 <CropIcon className="w-4 h-4" />
                 Apply Crop
               </Button>
+            </div>
+          </div>
+
+          <div
+            ref={containerRef}
+            className="relative w-full aspect-video bg-muted rounded-lg overflow-visible cursor-move"
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+          >
+            {/* Image/Video Preview */}
+            <div className="absolute inset-0 flex items-center justify-center select-none">
+              {isVideo ? (
+                <video
+                  ref={videoRef}
+                  src={preview}
+                  className="max-w-full max-h-full pointer-events-none"
+                  controls={false}
+                  muted
+                  loop
+                  autoPlay
+                />
+              ) : (
+                <img
+                  ref={imageRef}
+                  src={preview}
+                  alt="Crop preview"
+                  className="max-w-full max-h-full object-contain pointer-events-none select-none"
+                  draggable={false}
+                />
+              )}
+            </div>
+
+            {/* Crop Overlay */}
+            <div className="absolute inset-0 pointer-events-none">
+              {/* Dark overlays on each side of the crop area */}
+              {/* Top overlay */}
+              <div 
+                className="absolute left-0 right-0 top-0 bg-black/40"
+                style={{ height: `${crop.y}%` }}
+              />
+              {/* Bottom overlay */}
+              <div 
+                className="absolute left-0 right-0 bottom-0 bg-black/40"
+                style={{ height: `${100 - crop.y - crop.height}%` }}
+              />
+              {/* Left overlay */}
+              <div 
+                className="absolute left-0 bg-black/40"
+                style={{ 
+                  top: `${crop.y}%`,
+                  width: `${crop.x}%`,
+                  height: `${crop.height}%`
+                }}
+              />
+              {/* Right overlay */}
+              <div 
+                className="absolute right-0 bg-black/40"
+                style={{ 
+                  top: `${crop.y}%`,
+                  width: `${100 - crop.x - crop.width}%`,
+                  height: `${crop.height}%`
+                }}
+              />
+              
+              {/* Crop area - clear window with border */}
+              <div
+                className="absolute border-2 border-primary bg-transparent pointer-events-auto cursor-move"
+                style={{
+                  left: `${crop.x}%`,
+                  top: `${crop.y}%`,
+                  width: `${crop.width}%`,
+                  height: `${crop.height}%`,
+                }}
+                onMouseDown={handleMouseDown}
+              >
+                {/* Corner handles - with z-index to ensure they're above everything */}
+                <div
+                  className="absolute -top-2 -left-2 w-4 h-4 bg-primary rounded-full cursor-nwse-resize z-50"
+                  style={{ transform: 'translate(0, 0)' }}
+                  onMouseDown={(e) => handleHandleMouseDown(e, "top-left")}
+                />
+
+                <div
+                  className="absolute -top-2 -right-2 w-4 h-4 bg-primary rounded-full cursor-nesw-resize z-50"
+                  style={{ transform: 'translate(0, 0)' }}
+                  onMouseDown={(e) => handleHandleMouseDown(e, "top-right")}
+                />
+
+                <div
+                  className="absolute -bottom-2 -left-2 w-4 h-4 bg-primary rounded-full cursor-nesw-resize z-50"
+                  style={{ transform: 'translate(0, 0)' }}
+                  onMouseDown={(e) => handleHandleMouseDown(e, "bottom-left")}
+                />
+
+                <div
+                  className="absolute -bottom-2 -right-2 w-4 h-4 bg-primary rounded-full cursor-nwse-resize z-50"
+                  style={{ transform: 'translate(0, 0)' }}
+                  onMouseDown={(e) => handleHandleMouseDown(e, "bottom-right")}
+                />
+              </div>
             </div>
           </div>
         </CardContent>

@@ -1,10 +1,3 @@
-// Import actual device mockup images
-import imgDevice1 from "../../assets-devices/e4e504c58fbcb6230c59beef695b16fbe8fe88b3.png";
-import imgDevice2 from "../../assets-devices/67f24e8419bff5e3effca5aeac1f68520faf2d60.png";
-import imgDevice3 from "../../assets-devices/6a20dad0a2060f128b266554ad538181742a2399.png";
-import imgDevice4 from "../../assets-devices/e374b7b9b02565a79afc8e0e9ac1f5a4c481a49b.png";
-import imgDevice5 from "../../assets-devices/da5a87cad34dcd0319518b0bbcc51faf3db35ef2.png";
-
 export interface DeviceMockup {
   id: string;
   name: string;
@@ -16,8 +9,8 @@ export interface DeviceMockup {
   icon: string;
   image: string;
   screenArea: {
-    points?: Array<{ x: number; y: number }>; // 4 corner points [TL, TR, BR, BL] - normalized 0-1
-    x: number; // Fallback bounding box - normalized 0-1
+    points?: Array<{ x: number; y: number }>; // 4 corner points [TL, TR, BR, BL]
+    x: number;
     y: number;
     width: number;
     height: number;
@@ -25,9 +18,15 @@ export interface DeviceMockup {
   };
 }
 
-// Actual device mockups with 4-point perspective coordinates
+// Import custom device mockup images
+import imgDevice1 from "@/assets/e4e504c58fbcb6230c59beef695b16fbe8fe88b3.png";
+import imgDevice2 from "@/assets/67f24e8419bff5e3effca5aeac1f68520faf2d60.png";
+import imgDevice3 from "@/assets/6a20dad0a2060f128b266554ad538181742a2399.png";
+import imgDevice4 from "@/assets/e374b7b9b02565a79afc8e0e9ac1f5a4c481a49b.png";
+import imgDevice5 from "@/assets/da5a87cad34dcd0319518b0bbcc51faf3db35ef2.png";
+
 export const deviceMockups: DeviceMockup[] = [
-  // Scene-based mockups (from original project with 4-point coordinates)
+  // Custom Scene Mockups with 4-point coordinates
   {
     id: "workspace-setup",
     name: "Workspace Setup",
@@ -148,25 +147,6 @@ export const deviceMockups: DeviceMockup[] = [
       rotation: 0,
     },
   },
-  // Standard device mockups (with placeholder screen areas - can be configured later)
-  {
-    id: "iphone-15-pro",
-    name: "iPhone 15 Pro",
-    category: "phone",
-    aspectRatio: 19.5 / 9,
-    width: 393,
-    height: 852,
-    frameColor: "#1d1d1f",
-    icon: "Smartphone",
-    image: "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=400&h=400&fit=crop",
-    screenArea: {
-      x: 0.05,
-      y: 0.05,
-      width: 0.9,
-      height: 0.9,
-      rotation: 0,
-    },
-  },
   {
     id: "iphone-15-pro-max",
     name: "iPhone 15 Pro Max",
@@ -176,14 +156,8 @@ export const deviceMockups: DeviceMockup[] = [
     height: 932,
     frameColor: "#1d1d1f",
     icon: "Smartphone",
-    image: "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=400&h=400&fit=crop",
-    screenArea: {
-      x: 0.05,
-      y: 0.05,
-      width: 0.9,
-      height: 0.9,
-      rotation: 0,
-    },
+    image:
+      "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=400&h=400&fit=crop",
   },
   {
     id: "samsung-galaxy-s24",
@@ -194,14 +168,8 @@ export const deviceMockups: DeviceMockup[] = [
     height: 915,
     frameColor: "#2c2c2c",
     icon: "Smartphone",
-    image: "https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=400&h=400&fit=crop",
-    screenArea: {
-      x: 0.05,
-      y: 0.05,
-      width: 0.9,
-      height: 0.9,
-      rotation: 0,
-    },
+    image:
+      "https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=400&h=400&fit=crop",
   },
   {
     id: "pixel-8-pro",
@@ -212,15 +180,10 @@ export const deviceMockups: DeviceMockup[] = [
     height: 915,
     frameColor: "#3c4043",
     icon: "Smartphone",
-    image: "https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=400&h=400&fit=crop",
-    screenArea: {
-      x: 0.05,
-      y: 0.05,
-      width: 0.9,
-      height: 0.9,
-      rotation: 0,
-    },
+    image:
+      "https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=400&h=400&fit=crop",
   },
+  // Tablets
   {
     id: "ipad-pro-13",
     name: 'iPad Pro 13"',
@@ -230,14 +193,8 @@ export const deviceMockups: DeviceMockup[] = [
     height: 1366,
     frameColor: "#1d1d1f",
     icon: "Tablet",
-    image: "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=400&h=400&fit=crop",
-    screenArea: {
-      x: 0.05,
-      y: 0.05,
-      width: 0.9,
-      height: 0.9,
-      rotation: 0,
-    },
+    image:
+      "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=400&h=400&fit=crop",
   },
   {
     id: "ipad-air",
@@ -248,14 +205,8 @@ export const deviceMockups: DeviceMockup[] = [
     height: 1180,
     frameColor: "#1d1d1f",
     icon: "Tablet",
-    image: "https://images.unsplash.com/photo-1585790050230-5dd28404f905?w=400&h=400&fit=crop",
-    screenArea: {
-      x: 0.05,
-      y: 0.05,
-      width: 0.9,
-      height: 0.9,
-      rotation: 0,
-    },
+    image:
+      "https://images.unsplash.com/photo-1585790050230-5dd28404f905?w=400&h=400&fit=crop",
   },
   {
     id: "samsung-tab-s9",
@@ -266,15 +217,10 @@ export const deviceMockups: DeviceMockup[] = [
     height: 2560,
     frameColor: "#2c2c2c",
     icon: "Tablet",
-    image: "https://images.unsplash.com/photo-1561154464-82e9adf32764?w=400&h=400&fit=crop",
-    screenArea: {
-      x: 0.05,
-      y: 0.05,
-      width: 0.9,
-      height: 0.9,
-      rotation: 0,
-    },
+    image:
+      "https://images.unsplash.com/photo-1561154464-82e9adf32764?w=400&h=400&fit=crop",
   },
+  // Laptops
   {
     id: "macbook-pro-14",
     name: 'MacBook Pro 14"',
@@ -284,14 +230,8 @@ export const deviceMockups: DeviceMockup[] = [
     height: 1964,
     frameColor: "#1d1d1f",
     icon: "Laptop",
-    image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&h=400&fit=crop",
-    screenArea: {
-      x: 0.05,
-      y: 0.05,
-      width: 0.9,
-      height: 0.7,
-      rotation: 0,
-    },
+    image:
+      "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&h=400&fit=crop",
   },
   {
     id: "macbook-pro-16",
@@ -302,14 +242,8 @@ export const deviceMockups: DeviceMockup[] = [
     height: 2234,
     frameColor: "#1d1d1f",
     icon: "Laptop",
-    image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&h=400&fit=crop",
-    screenArea: {
-      x: 0.05,
-      y: 0.05,
-      width: 0.9,
-      height: 0.7,
-      rotation: 0,
-    },
+    image:
+      "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&h=400&fit=crop",
   },
   {
     id: "macbook-air",
@@ -320,15 +254,10 @@ export const deviceMockups: DeviceMockup[] = [
     height: 1664,
     frameColor: "#e8e8ed",
     icon: "Laptop",
-    image: "https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?w=600&h=400&fit=crop",
-    screenArea: {
-      x: 0.05,
-      y: 0.05,
-      width: 0.9,
-      height: 0.7,
-      rotation: 0,
-    },
+    image:
+      "https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?w=600&h=400&fit=crop",
   },
+  // Desktop
   {
     id: "imac-24",
     name: 'iMac 24"',
@@ -338,14 +267,8 @@ export const deviceMockups: DeviceMockup[] = [
     height: 2520,
     frameColor: "#1d1d1f",
     icon: "Monitor",
-    image: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=600&h=400&fit=crop",
-    screenArea: {
-      x: 0.05,
-      y: 0.05,
-      width: 0.9,
-      height: 0.85,
-      rotation: 0,
-    },
+    image:
+      "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=600&h=400&fit=crop",
   },
   {
     id: "studio-display",
@@ -356,15 +279,10 @@ export const deviceMockups: DeviceMockup[] = [
     height: 2880,
     frameColor: "#e8e8ed",
     icon: "Monitor",
-    image: "https://images.unsplash.com/photo-1585792180666-f7347c490ee2?w=600&h=400&fit=crop",
-    screenArea: {
-      x: 0.05,
-      y: 0.05,
-      width: 0.9,
-      height: 0.85,
-      rotation: 0,
-    },
+    image:
+      "https://images.unsplash.com/photo-1585792180666-f7347c490ee2?w=600&h=400&fit=crop",
   },
+  // Watch
   {
     id: "apple-watch-ultra",
     name: "Apple Watch Ultra",
@@ -374,14 +292,8 @@ export const deviceMockups: DeviceMockup[] = [
     height: 502,
     frameColor: "#1d1d1f",
     icon: "Watch",
-    image: "https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=400&h=400&fit=crop",
-    screenArea: {
-      x: 0.1,
-      y: 0.1,
-      width: 0.8,
-      height: 0.8,
-      rotation: 0,
-    },
+    image:
+      "https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=400&h=400&fit=crop",
   },
   {
     id: "apple-watch-series-9",
@@ -392,20 +304,13 @@ export const deviceMockups: DeviceMockup[] = [
     height: 484,
     frameColor: "#1d1d1f",
     icon: "Watch",
-    image: "https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=400&h=400&fit=crop",
-    screenArea: {
-      x: 0.1,
-      y: 0.1,
-      width: 0.8,
-      height: 0.8,
-      rotation: 0,
-    },
+    image:
+      "https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=400&h=400&fit=crop",
   },
 ];
 
 export const deviceCategories = [
   { id: "all", name: "All Devices", icon: "Grid3x3" },
-  { id: "scene", name: "Scenes", icon: "Monitor" },
   { id: "phone", name: "Phones", icon: "Smartphone" },
   { id: "tablet", name: "Tablets", icon: "Tablet" },
   { id: "laptop", name: "Laptops", icon: "Laptop" },

@@ -3,7 +3,7 @@ import {
   deviceMockups,
   deviceCategories,
   type DeviceMockup,
-} from "@/polymet/data/device-mockups-integrated";
+} from "@/polymet/data/device-mockups-data";
 import { Button } from "@/components/ui/button";
 import {
   SmartphoneIcon,

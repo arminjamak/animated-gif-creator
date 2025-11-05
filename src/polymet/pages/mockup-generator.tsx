@@ -6,7 +6,8 @@ import { ImageCropper } from "@/polymet/components/image-cropper";
 import { MockupPreview } from "@/polymet/components/mockup-preview";
 import { ProcessingIndicator } from "@/polymet/components/processing-indicator";
 import { DownloadButton } from "@/polymet/components/download-button";
-import { type DeviceMockup } from "@/polymet/data/device-mockups-integrated";
+import { type DeviceMockup } from "@/polymet/data/device-mockups-data";
+import { processMedia } from "@/utils/mediaProcessor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +50,8 @@ export function MockupGenerator() {
   const [progress, setProgress] = useState(0);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [mockupPreviewUrl, setMockupPreviewUrl] = useState<string>("");
+  const [gifBlob, setGifBlob] = useState<Blob | null>(null);
+  const [movBlob, setMovBlob] = useState<Blob | null>(null);
 
   const isVideo = uploadedFile?.type.startsWith("video/");
 
@@ -88,41 +91,72 @@ export function MockupGenerator() {
     setCurrentStep("preview");
   }, []);
 
-  const handleGenerateMockup = useCallback(() => {
+  const handleGenerateMockup = useCallback(async () => {
+    if (!selectedDevice || !uploadedFile) return;
+
     setCurrentStep("process");
     setProcessingStatus("processing");
     setProgress(0);
 
-    // Simulate processing
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setProcessingStatus("success");
-          // Generate mockup preview (in real app, this would be the actual processed mockup)
-          setMockupPreviewUrl(filePreview);
-          setCurrentStep("download");
-          return 100;
-        }
-        return prev + 10;
+    try {
+      // Determine file type
+      const fileType = uploadedFile.type.startsWith("video/")
+        ? "video"
+        : uploadedFile.type.includes("gif")
+        ? "gif"
+        : "image";
+
+      // Process the media with the actual backend
+      const result = await processMedia({
+        device: selectedDevice,
+        uploadedFile: {
+          file: uploadedFile,
+          url: filePreview,
+          type: fileType,
+          croppedArea: cropArea,
+        },
+        onProgress: (prog, status) => {
+          setProgress(prog);
+          // You can update status message here if needed
+        },
       });
-    }, 300);
-  }, [filePreview]);
+
+      // Set the preview URL and blobs
+      setMockupPreviewUrl(result.previewUrl);
+      setGifBlob(result.gifBlob);
+      setMovBlob(result.movBlob);
+      
+      setProcessingStatus("success");
+      setCurrentStep("download");
+    } catch (error) {
+      console.error("Processing failed:", error);
+      setProcessingStatus("error");
+      alert("Failed to process mockup. Please try again.");
+    }
+  }, [selectedDevice, uploadedFile, filePreview, cropArea]);
 
   const handleDownload = useCallback(
     (format: "gif" | "mov") => {
-      // In a real app, this would trigger the actual download
-      console.log(`Downloading as ${format}`);
+      const blob = format === "gif" ? gifBlob : movBlob;
+      
+      if (!blob) {
+        alert("File not ready for download. Please try processing again.");
+        return;
+      }
 
-      // Create a mock download
+      // Create download link
+      const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = filePreview;
+      link.href = url;
       link.download = `mockup-${selectedDevice?.id}.${format}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      
+      // Clean up the URL
+      setTimeout(() => URL.revokeObjectURL(url), 100);
     },
-    [filePreview, selectedDevice]
+    [gifBlob, movBlob, selectedDevice]
   );
 
   const handleReset = useCallback(() => {
@@ -344,7 +378,7 @@ export function MockupGenerator() {
             <Button
               variant="outline"
               onClick={() => setCurrentStep("upload")}
-              className="w-full"
+              className="w-full my-4"
             >
               Back to Upload
             </Button>

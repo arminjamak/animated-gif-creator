@@ -76,6 +76,17 @@
                 </div>
                 
                 <div class="controls">
+                    <div style="margin-bottom: 15px;">
+                        <label for="categorySelect" style="margin-right: 10px; font-weight: bold;">Category:</label>
+                        <select id="categorySelect" style="padding: 8px 12px; border-radius: 6px; background: #1a1a1a; color: white; border: 2px solid #444; font-size: 14px;" onchange="updateDeviceCategory()">
+                            <option value="scene">Scene</option>
+                            <option value="phone">Phone</option>
+                            <option value="tablet">Tablet</option>
+                            <option value="laptop">Laptop</option>
+                            <option value="desktop">Desktop</option>
+                            <option value="watch">Watch</option>
+                        </select>
+                    </div>
                     <button onclick="resetPoints()" id="resetBtn" disabled>Reset Points</button>
                     <button onclick="saveCoordinates()" id="saveBtn" disabled>Save Coordinates</button>
                     <button onclick="nextDevice()" id="nextBtn" disabled>Save & Next</button>
@@ -159,6 +170,12 @@
             
             console.log('Selecting device:', currentDevice.name, 'with screenArea:', currentDevice.screenArea);
             
+            // Update category dropdown
+            const categorySelect = document.getElementById('categorySelect');
+            if (currentDevice.category) {
+                categorySelect.value = currentDevice.category;
+            }
+            
             // Update sidebar
             document.querySelectorAll('.device-item').forEach((item, i) => {
                 item.classList.toggle('active', i === index);
@@ -171,6 +188,15 @@
             document.getElementById('resetBtn').disabled = false;
             document.getElementById('saveBtn').disabled = false;
             document.getElementById('nextBtn').disabled = false;
+        }
+        
+        function updateDeviceCategory() {
+            if (!currentDevice) return;
+            
+            const categorySelect = document.getElementById('categorySelect');
+            currentDevice.category = categorySelect.value;
+            
+            console.log('Updated category for', currentDevice.name, 'to', categorySelect.value);
         }
         
         function loadDeviceImage() {
@@ -209,11 +235,24 @@
             
             console.log('Loading points for:', currentDevice.name, currentDevice.screenArea);
             
-            // Check if we have exact saved points for this device
+            // Check if we have exact saved points for this device (in memory)
             if (devicePoints[currentDevice.id] && devicePoints[currentDevice.id].length === 4) {
                 // Use the exact saved point positions
                 points = devicePoints[currentDevice.id].map(p => ({ x: p.x, y: p.y }));
-                console.log('Loaded exact saved points:', points);
+                console.log('Loaded exact saved points from memory:', points);
+                renderPoints();
+                
+                status.className = 'status ready';
+                status.textContent = `✅ Loaded saved coordinates for ${currentDevice.name}`;
+            } else if (currentDevice.screenArea.points && currentDevice.screenArea.points.length === 4) {
+                // Load from file's normalized points
+                points = currentDevice.screenArea.points.map(p => ({
+                    x: p.x * canvas.width,
+                    y: p.y * canvas.height
+                }));
+                // Also save to memory for next time
+                devicePoints[currentDevice.id] = points.map(p => ({ x: p.x, y: p.y }));
+                console.log('Loaded points from file:', points);
                 renderPoints();
                 
                 status.className = 'status ready';
@@ -359,7 +398,10 @@
                 const response = await fetch(`${API_URL}/devices/${currentDevice.id}/coordinates`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ screenArea })
+                    body: JSON.stringify({ 
+                        screenArea,
+                        category: currentDevice.category 
+                    })
                 });
                 
                 const result = await response.json();
@@ -371,6 +413,7 @@
                     // Update local device data in the array
                     const currentIndex = devices.indexOf(currentDevice);
                     devices[currentIndex].screenArea = { ...screenArea };
+                    devices[currentIndex].category = currentDevice.category;
                     currentDevice.screenArea = { ...screenArea };
                     
                     // Store the exact point positions for this device

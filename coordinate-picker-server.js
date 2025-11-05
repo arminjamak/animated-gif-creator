@@ -1,7 +1,11 @@
-const express = require('express');
-const fs = require('fs');
-const path = require('path');
-const cors = require('cors');
+import express from 'express';
+import fs from 'fs';
+import path from 'path';
+import cors from 'cors';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(cors());
@@ -9,30 +13,15 @@ app.use(express.json());
 app.use(express.static('.'));
 app.use('/src/assets', express.static(path.join(__dirname, 'src', 'assets')));
 
-const APP_TSX_PATH = path.join(__dirname, 'src', 'App.tsx');
+const DATA_FILE_PATH = path.join(__dirname, 'src', 'polymet', 'data', 'device-mockups-data.ts');
 
-// Read current device mockups from App.tsx
+// Read current device mockups from device-mockups-data.ts
 app.get('/api/devices', (req, res) => {
   try {
-    const appContent = fs.readFileSync(APP_TSX_PATH, 'utf8');
-    
-    // Extract DEVICE_MOCKUPS array
-    const mockupsMatch = appContent.match(/export const DEVICE_MOCKUPS: DeviceMockup\[\] = \[([\s\S]*?)\];/);
-    
-    if (!mockupsMatch) {
-      return res.status(500).json({ error: 'Could not find DEVICE_MOCKUPS in App.tsx' });
-    }
-    
-    // Parse the array content
-    const arrayContent = mockupsMatch[1];
-    const devices = [];
-    
-    // Extract each device object - handle both string URLs and imported variables
-    const deviceRegex = /\{\s*id:\s*"([^"]+)",\s*image:\s*([^,]+),\s*name:\s*"([^"]+)",\s*screenArea:\s*\{([^}]+)\}\s*\}/g;
-    let match;
+    const appContent = fs.readFileSync(DATA_FILE_PATH, 'utf8');
     
     // Extract import statements to map variable names to file paths
-    const importRegex = /import\s+(\w+)\s+from\s+"\.\/assets\/([^"]+)"/g;
+    const importRegex = /import\s+(\w+)\s+from\s+"@\/assets\/([^"]+)"/g;
     const importMap = {};
     let importMatch;
     while ((importMatch = importRegex.exec(appContent)) !== null) {
@@ -40,30 +29,65 @@ app.get('/api/devices', (req, res) => {
       importMap[varName] = `/src/assets/${filePath}`;
     }
     
-    while ((match = deviceRegex.exec(arrayContent)) !== null) {
-      const [, id, imageValue, name, screenAreaStr] = match;
+    // Extract deviceMockups array - more flexible regex
+    const mockupsMatch = appContent.match(/export const deviceMockups: DeviceMockup\[\] = \[([\s\S]*?)\n\];/);
+    
+    if (!mockupsMatch) {
+      return res.status(500).json({ error: 'Could not find deviceMockups in device-mockups-data.ts' });
+    }
+    
+    const arrayContent = mockupsMatch[1];
+    const devices = [];
+    
+    // Split by device objects (look for opening braces at start of line)
+    const deviceObjects = arrayContent.split(/\n  \{/).filter(s => s.trim());
+    
+    for (const deviceStr of deviceObjects) {
+      // Extract fields
+      const idMatch = deviceStr.match(/id:\s*"([^"]+)"/);
+      const nameMatch = deviceStr.match(/name:\s*"([^"]+)"/);
+      const categoryMatch = deviceStr.match(/category:\s*"([^"]+)"/);
+      const imageMatch = deviceStr.match(/image:\s*(\w+)/);
       
-      // Extract image - could be a string or variable name
-      let image = imageValue.trim();
-      if (image.startsWith('"') && image.endsWith('"')) {
-        image = image.slice(1, -1); // Remove quotes
-      } else if (importMap[image]) {
-        // Resolve imported variable to file path
-        image = importMap[image];
-      }
+      // Extract screenArea
+      const screenAreaMatch = deviceStr.match(/screenArea:\s*\{([\s\S]*?)\n\s*\}/);
+      
+      if (!idMatch || !nameMatch || !imageMatch || !screenAreaMatch) continue;
+      
+      const id = idMatch[1];
+      const name = nameMatch[1];
+      const category = categoryMatch ? categoryMatch[1] : 'scene';
+      const imageVar = imageMatch[1];
+      const image = importMap[imageVar] || imageVar;
       
       // Parse screenArea
+      const screenAreaStr = screenAreaMatch[1];
       const xMatch = screenAreaStr.match(/x:\s*([\d.]+)/);
       const yMatch = screenAreaStr.match(/y:\s*([\d.]+)/);
       const widthMatch = screenAreaStr.match(/width:\s*([\d.]+)/);
       const heightMatch = screenAreaStr.match(/height:\s*([\d.]+)/);
       const rotationMatch = screenAreaStr.match(/rotation:\s*([-\d.]+)/);
       
+      // Extract points if they exist
+      const pointsMatch = screenAreaStr.match(/points:\s*\[([\s\S]*?)\]/);
+      let points = null;
+      if (pointsMatch) {
+        const pointsStr = pointsMatch[1];
+        const pointRegex = /\{\s*x:\s*([\d.]+),\s*y:\s*([\d.]+)\s*\}/g;
+        points = [];
+        let pointMatch;
+        while ((pointMatch = pointRegex.exec(pointsStr)) !== null) {
+          points.push({ x: parseFloat(pointMatch[1]), y: parseFloat(pointMatch[2]) });
+        }
+      }
+      
       devices.push({
         id,
-        image,
         name,
+        category,
+        image,
         screenArea: {
+          points,
           x: parseFloat(xMatch ? xMatch[1] : 0),
           y: parseFloat(yMatch ? yMatch[1] : 0),
           width: parseFloat(widthMatch ? widthMatch[1] : 0),
@@ -73,6 +97,7 @@ app.get('/api/devices', (req, res) => {
       });
     }
     
+    console.log(`✅ Loaded ${devices.length} devices`);
     res.json({ devices });
   } catch (error) {
     console.error('Error reading devices:', error);
@@ -84,9 +109,9 @@ app.get('/api/devices', (req, res) => {
 app.post('/api/devices/:id/coordinates', (req, res) => {
   try {
     const { id } = req.params;
-    const { screenArea } = req.body;
+    const { screenArea, category } = req.body;
     
-    let appContent = fs.readFileSync(APP_TSX_PATH, 'utf8');
+    let appContent = fs.readFileSync(DATA_FILE_PATH, 'utf8');
     
     // Find and replace the specific device's screenArea - handle both string URLs and imported variables
     const deviceRegex = new RegExp(
@@ -121,6 +146,6 @@ app.post('/api/devices/:id/coordinates', (req, res) => {
 const PORT = 3001;
 app.listen(PORT, () => {
   console.log(`\n🎯 Coordinate Picker Server running on http://localhost:${PORT}`);
-  console.log(`📝 Editing: ${APP_TSX_PATH}`);
+  console.log(`📝 Editing: ${DATA_FILE_PATH}`);
   console.log(`\nOpen http://localhost:${PORT}/coordinate-picker-integrated.html to start\n`);
 });
